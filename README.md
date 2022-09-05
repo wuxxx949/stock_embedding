@@ -27,13 +27,8 @@ param_lst = [{'l': 50, 'r': 10, 'p': 0.5, 'q': 2, 'w': 5, 'dim': 16},
 
 summary, opt_param = se.hyperparam_tuning(param_lst)
 ```
-```
-# similar to Table 3 of the original paper
-	r	l	p	q	dim	w	sector	    group	    industry	subindustry	average
-0	10	50	0.5	2.0	16	5	0.403711	0.607894	0.717576	0.816442	0.636406
-1	50	100	2.0	0.5	16	5	0.463947	0.632105	0.731896	0.820620	0.662142
-2	10	200	2.0	0.5	32	5	0.483616	0.622592	0.730988	0.821894	0.664773
-```
+similar to Table 3 of the original paper
+![ht](doc/ht.png)
 
 The stock embedding enables us to answer the following questions
 
