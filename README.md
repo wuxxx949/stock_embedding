@@ -1,3 +1,6 @@
+TODO: - add viz 
+      - make it a proper python package
+      
 # Stock Embedding
 This repo implements the methodology based on paper Learning Embedded Representation of the Stock Correlation Matrix using Graph Machine Learning.
 
@@ -14,7 +17,7 @@ The goal is to learn a vector representation of a ticker given the daily returns
 With the vectorized ticker, we can pass these elements in the vector to the downstream ML jobs.
 
 ## Example
-This repo is able to replicate most of the results presented in the paper. Here is some examples from the notebook under src.
+This repo is able to replicate most of the results presented in the paper. Here are some examples from the notebook under src.
 
 ```python
 # stock data are fetched via yfinance package, the log returns and correlations are cacluated internally
