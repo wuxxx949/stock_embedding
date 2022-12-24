@@ -13,6 +13,7 @@ from stellargraph.data import BiasedRandomWalk
 
 from data.fetch_daily_return import (daily_return_calc, fetch_daily_price,
                                      fetch_sp500_list)
+from utils import corr_from_cov, cov_from_corr, exp_weight
 
 
 class StockEmbedding:
@@ -25,7 +26,7 @@ class StockEmbedding:
         if return_df is None:
             sp_500 = fetch_sp500_list()
             sp_500_tickers = list(sp_500.keys())
-            out = fetch_daily_price(sp_500_tickers, start=start_date, end=end_date, batch_size=20)
+            out = fetch_daily_price(sp_500_tickers, start=start_date, end=end_date, batch_size=200)
             return_df = daily_return_calc(out)
         if not sum([e in ['date', 'ticker', 'daily_return'] for e in return_df.columns]) == 3:
             raise ValueError("return df must contains columns of ['date', 'ticker', 'daily_return']")
@@ -461,8 +462,50 @@ class StockEmbedding:
         return sum_df, opt_param
 
 
+    def cos_cov(self,
+                vol_estimate: bool=True,
+                weighted_estimate:bool=True) -> pd.DataFrame:
+        """estimate stock covariance matrix based on embedding
+
+        Args:
+            vol_estimate (bool, optional): use embedding only for correlation and estimate volatility separately.
+                                           Defaults to True.
+            weighted_estimate (bool, optional): use exponential decay for volatility if vol_estiamte set to True.
+                                                Defaults to True.
+
+        Returns:
+            pd.DataFrame: covariance matrix with ticker as index and column
+        """
+        ticker = self.embedding_df.columns
+        cov = self.embedding_df.to_numpy().T @ self.embedding_df.to_numpy()
+        corr = corr_from_cov(cov)
+
+        # estimate volatility using exponential decay
+        def vol_est(return_df: pd.DataFrame) -> pd.DataFrame:
+            df = return_df.sort_values('date', ascending=False)
+            window_size = len(df)
+            if weighted_estimate:
+                half_life = int(window_size / 2)
+                wt = exp_weight(window_size=window_size, half_life=half_life)
+            else:
+                wt = 1 / window_size
+
+            mean = (wt * df['daily_return']).sum()
+            var = (wt * np.square(df['daily_return'] - mean)).sum()
+
+            return np.sqrt(var)
+
+        if vol_estimate:
+            var_est = self.return_df.groupby('ticker').apply(vol_est).filter(ticker).reset_index(name='volatility')
+            cov = cov_from_corr(corr, var_est['volatility'])
+
+        cov = pd.DataFrame(cov, index=ticker, columns=ticker)
+
+        return cov
+
+
 if __name__ == '__main__':
-    rdf = pd.read_csv('src/data/daily_return.csv')
+    rdf = pd.read_csv('/Users/zizhenwu/Documents/stock_embedding/src/data/daily_return.csv')
     se_obj = StockEmbedding(rdf)
     # corr = se_obj._sim_random_walk(r=50, l=100, p=2, q=0.5)
     # se_obj.learn_embedding(r=50, l=100, p=2, q=0.5, vector_size=16, window=5)
@@ -474,4 +517,13 @@ if __name__ == '__main__':
                  {'l': 100, 'r': 50, 'p': 2, 'q': 0.5, 'w': 5, 'dim': 16},
                  {'l': 200, 'r': 10, 'p': 2, 'q': 0.5, 'w': 5, 'dim': 32}]
 
-    se_obj.hyperparam_tuning(param_lst)
+    # summary, opt_param = se_obj.hyperparam_tuning(param_lst)
+
+    stock_embedding = se_obj.learn_embedding(
+        r=10,
+        l=200,
+        p=2,
+        q=0.5,
+        vector_size=32,
+        window=5
+        )
